@@ -10,11 +10,33 @@ app.get("/", (req, res) => {
   res.send("Backend working ✅");
 });
 
+app.get("/api", (req, res) => {
+  res.json({ status: "ok", message: "Sona backend is running 🎵" });
+});
 
-// ✅ CORS — allow your Vercel frontend domain
+// ✅ BULLETPROOF CORS — strips trailing slash before comparing
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "https://music-sona-frontend.vercel.app", // replace with your frontend URL
-  credentials: true,  // Required for cookies to work cross-origin
+  origin: function (origin, callback) {
+    // Allow Postman, curl, mobile apps (no origin)
+    if (!origin) return callback(null, true);
+
+    // Strip trailing slash from origin before checking
+    const cleanOrigin = origin.replace(/\/$/, "");
+
+    const allowedOrigins = [
+      "https://music-sona-frontend.vercel.app",
+      "http://localhost:5500",
+      "http://127.0.0.1:5500",
+      "http://localhost:3000",
+    ];
+
+    if (allowedOrigins.includes(cleanOrigin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS: " + origin));
+  },
+  credentials: true,
 }));
 
 app.use(express.json());
