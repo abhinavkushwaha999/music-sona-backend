@@ -13,7 +13,7 @@ app.get("/", (req, res) => {
 
 // ✅ CORS — allow your Vercel frontend domain
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5500", // replace with your frontend URL
+  origin: process.env.FRONTEND_URL || "https://music-sona-frontend.vercel.app", // replace with your frontend URL
   credentials: true,  // Required for cookies to work cross-origin
 }));
 
