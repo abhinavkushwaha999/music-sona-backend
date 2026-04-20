@@ -1,6 +1,7 @@
 const musicModel = require("../models/music.model");
 const albumModel = require("../models/album.model");
 const ImageKit = require("@imagekit/nodejs");
+const crypto = require("crypto");
 require("../models/user.model");
 
 const imagekit = new ImageKit({
@@ -9,12 +10,20 @@ const imagekit = new ImageKit({
   urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
 });
 
+// ✅ Manual auth — works with any ImageKit SDK version
 async function getImageKitAuth(req, res) {
   try {
-    const authParams = imagekit.getAuthenticationParameters();
-    res.json(authParams);
+    const token = crypto.randomUUID();
+    const expire = Math.floor(Date.now() / 1000) + 2400;
+    const signature = crypto
+      .createHmac("sha1", process.env.IMAGEKIT_PRIVATE_KEY)
+      .update(token + expire)
+      .digest("hex");
+
+    res.json({ token, expire, signature });
   } catch (err) {
-    res.status(500).json({ message: "Failed to get upload auth: " + err.message });
+    console.error("ImageKit auth error:", err);
+    res.status(500).json({ message: "Auth failed: " + err.message });
   }
 }
 
@@ -34,7 +43,11 @@ async function createMusic(req, res) {
     const { title } = req.body;
     const file = req.file;
     if (!file) return res.status(400).json({ message: "No audio file provided" });
-    const result = await imagekit.upload({ file: file.buffer.toString("base64"), fileName: "music_" + Date.now(), folder: "sona/music" });
+    const result = await imagekit.upload({
+      file: file.buffer.toString("base64"),
+      fileName: "music_" + Date.now(),
+      folder: "sona/music"
+    });
     const music = await musicModel.create({ uri: result.url, title, artist: req.user.id });
     res.status(201).json({ message: "Music Created Successfully", music });
   } catch (err) {
@@ -74,7 +87,10 @@ async function getAllAlbums(req, res) {
 
 async function getAlbumById(req, res) {
   try {
-    const album = await albumModel.findById(req.params.albumId).populate("artist", "username email").populate("musics");
+    const album = await albumModel
+      .findById(req.params.albumId)
+      .populate("artist", "username email")
+      .populate("musics");
     if (!album) return res.status(404).json({ message: "Album not found" });
     res.status(200).json({ message: "Album fetched Successfully", album });
   } catch (err) {
